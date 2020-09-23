@@ -1,0 +1,98 @@
+function EventEmitter() {
+  // 不继承原型链
+  this._events = Object.create(null);
+}
+// 默认最多绑定次数
+EventEmiter.defaultMaxListeners = 10;
+// 同on方法
+EventEmiter.prototype.addListener = EventEmitter.prototype.on;
+// 返回监听的事件名
+EventEmiter.prototype.eventNames = function () {
+  return Object.keys(this._events);
+};
+
+// 设置最大监听数
+EventEmiter.prototype.setMaxListeners = function (n) {
+  this._count = n;
+};
+// 返回监听数
+EventEmiter.prototype.getMaxListeners = function () {
+  return this._count ? this._count : this.defaultMaxListeners;
+};
+// 监听
+/**
+ *
+ * @param {监听事件名} type
+ * @param {回调函数} cb
+ * @param {决定在回调函数队列前后添加} flag
+ */
+EventEmiter.prototype.on = function (type, cb, flag) {
+  if (!this._events) {
+    this._events = Object.create(null);
+  }
+
+  if (type !== "newListener") {
+    this._events["newListener"] &&
+      this._events["newListener"].forEach((listener) => {
+        listener(type);
+      });
+  }
+  if (this._events[type]) {
+    if (flag) {
+      this._events[type].unshift(cb);
+    } else {
+      this._events[type].push(cb);
+    }
+  } else {
+    this._events[type] = [cb];
+  }
+
+  if (this._events[type].length === this.getMaxListeners()) {
+    console.warn("警告");
+  }
+};
+
+// 向前添加
+EventEmiter.prototype.prependListener = function (type, cb) {
+  this.on(type, cb, true);
+};
+
+EventEmiter.prototype.once = function (type, cb, flag) {
+  // 先绑定，调用后删除
+  function wrap() {
+    cb(...arguments);
+    this.removeListener(type, wrap);
+  }
+  // 绑定注册的回调函数
+  wrap.listen = cb;
+  this.on(type, wrap, flag);
+};
+
+// 删除监听类型
+EventEmiter.prototype.removeListener = function (type, cb) {
+  if (this._events[type]) {
+    this._events[type] = this._events[type].fliter((listener) => {
+      return cb !== listener && cb !== listener.listen;
+    });
+  }
+};
+// 删除
+EventEmitter.prototype.removeAllListener = function () {
+  this._events = Object.create(null);
+};
+
+// 返回type事件的监听者数组
+EventEmitter.prototype.listeners = function (type) {
+  return this._events[type];
+};
+// 触发监听
+EventEmitter.prototype.emit = function (type, ...args) {
+  if (this._events[type]) {
+    this._events[type].forEach((listener) => {
+      // this被绑定到Eventemitter
+      listener.call(this, ...args);
+    });
+  }
+};
+
+module.exports = EventEmitter;
